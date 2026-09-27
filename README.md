@@ -10,12 +10,68 @@
 [![ISO 11783](https://img.shields.io/badge/ISOBUS-ISO%2011783--10%20TC--GEO-2E7D32?style=for-the-badge&logo=circuitverse&logoColor=white)](https://www.aef-isobus.net/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.30%2B-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://streamlit.io/)
 
+[![Winner](https://img.shields.io/badge/🏆_Qostanai_AgroTech_Hackathon_2026-1_место-FFD700?style=for-the-badge)](https://drive.google.com/drive/folders/1FhJvhLs3iRWOu3A_hvG7i_HTn9nqWnIY?usp=sharing)
+
 **Интеллектуальная система аэромониторинга, дифференцированного внесения гербицидов и офлайн-агроскаутинга**  
 *Разработано для агрохолдинга ТОО «Олжа Агро» в рамках Qostanai AgroTech Hackathon 2026 (Кейс №1)*
 
-[🚀 Быстрый старт](#быстрая-оценка-проекта-проверяющим) • [🏗️ Архитектура](#архитектура-сквозного-конвейера) • [📊 Метрики](#верифицированные-метрики-качества-и-эффективности) • [📱 Офлайн PWA](#мобильное-приложение-полевого-агронома-агроскаут-pwa) • [🚜 ISO-XML и техника](#интеграция-с-сельхозтехникой-iso-11783-10--isobus) • [💻 CLI и запуск](#полное-руководство-по-запуску-и-cli)
+[🏆 Результат хакатона](#результат-хакатона) • [🚀 Быстрая оценка](#быстрая-оценка-проекта-проверяющим) • [🏗️ Архитектура](#архитектура-сквозного-конвейера) • [📊 Метрики](#верифицированные-метрики-качества-и-эффективности) • [📱 Офлайн PWA](#мобильное-приложение-полевого-агронома-агроскаут-pwa) • [🚜 ISO-XML и техника](#интеграция-с-сельхозтехникой-iso-11783-10--isobus) • [💻 CLI и запуск](#полное-руководство-по-запуску-и-cli)
 
 </div>
+
+---
+
+## Результат хакатона
+
+**🥇 1 место — Qostanai AgroTech Hackathon 2026** (Astana Hub Kostanay · ТОО «Метод 2023» · ТОО «Олжа Агро» · Digital & AI Qazaqstan 2026), приз **500 000 ₸**. Команда **MusorDropp**.
+
+📁 **Подтверждение (диплом победителя, сертификат на приз, сертификат участника, фото команды):**  
+**[Открыть папку на Google Drive](https://drive.google.com/drive/folders/1FhJvhLs3iRWOu3A_hvG7i_HTn9nqWnIY?usp=sharing)**
+
+<table>
+  <tr>
+    <td align="center" width="50%"><a href="docs/assets/hackathon/certificate_winner.jpg"><img src="docs/assets/hackathon/certificate_winner.jpg" alt="Certificate of Achievement — Winner of AgroTech Hackathon 2026" width="100%"></a><br><sub><b>Certificate of Achievement</b> — WINNER of AgroTech Hackathon 2026</sub></td>
+    <td align="center" width="50%"><a href="docs/assets/hackathon/certificate_participation.jpg"><img src="docs/assets/hackathon/certificate_participation.jpg" alt="Certificate of Appreciation — участие в AgroTech Hackathon 2026" width="100%"></a><br><sub><b>Certificate of Appreciation</b> — участие в хакатоне</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/assets/hackathon/prize_500k.jpg"><img src="docs/assets/hackathon/prize_500k.jpg" alt="Сертификат на приз 500 000 ₸" width="100%"></a><br><sub><b>Приз победителю</b> — 500 000 ₸</sub></td>
+    <td align="center"><a href="docs/assets/hackathon/team.jpg"><img src="docs/assets/hackathon/team.jpg" alt="Команда MusorDropp" width="70%"></a><br><sub><b>Команда MusorDropp</b></sub></td>
+  </tr>
+</table>
+
+### Мой вклад
+
+**Алихан** — вся техническая часть проекта и развитие идеи:
+
+- **Бэкенд:** FastAPI-сервер (AI-классификация вырезок, очередь верификации, идемпотентная синхронизация `/api/v1/sync`), экспорт карт в GeoJSON и ISO 11783 `TASKDATA.XML`.
+- **Фронтенд:** офлайн-PWA «АгроСкаут» (Service Worker + IndexedDB) и аналитический дашборд Streamlit.
+- **Продукт:** проработка и развитие идеи — от детекции сорняков до карантинного шлюза безопасности пшеницы, экономической модели для «Олжа Агро» и планировщика флота БПЛА.
+
+---
+
+## Быстрая оценка проекта проверяющим
+
+Что посмотреть за 5 минут, если нет времени запускать проект:
+
+| Что | Где |
+|---|---|
+| Подтверждение победы | [Google Drive](https://drive.google.com/drive/folders/1FhJvhLs3iRWOu3A_hvG7i_HTn9nqWnIY?usp=sharing) · [фото выше](#результат-хакатона) |
+| Архитектура конвейера | [схема ниже](#архитектура-сквозного-конвейера) |
+| Метрики моделей и экономика | [таблицы метрик](#верифицированные-метрики-качества-и-эффективности) |
+| Бэкенд FastAPI | [`case1/server/`](case1/server/) |
+| Офлайн-PWA «АгроСкаут» | [`case1/mobile/`](case1/mobile/) |
+| Дашборд агронома | [`case1/dashboard/`](case1/dashboard/) |
+| Экспорт в сельхозтехнику (GeoJSON / ISO-XML) | [`case1/geo/`](case1/geo/) |
+| Автотесты | [`case1/tests/`](case1/tests/) |
+
+Минимальный запуск (≈2 минуты):
+
+```bash
+pip install -r case1/requirements.txt
+uvicorn case1.server.app:app --port 8000
+# Swagger:      http://localhost:8000/docs
+# PWA агронома: http://localhost:8000/mobile/
+```
 
 ---
 
@@ -192,8 +248,8 @@ flowchart TD
 ### 1. Подготовка окружения
 
 ```bash
-# Клонирование и переход в проект
-cd /Users/kr220/Documents/Projects/Qostanai_AgroTech_Hackathon_2026
+# Перейдите в корень склонированного репозитория
+cd Qostanai_AgroTech_Hackathon_2026
 
 # Создание и активация виртуального окружения
 python3 -m venv .venv
