@@ -1,6 +1,25 @@
 # AgroVision AI — мониторинг сорняков и карта дифференцированного опрыскивания
 
+[![Winner](https://img.shields.io/badge/🏆_Qostanai_AgroTech_Hackathon_2026-1_место-FFD700?style=for-the-badge)](https://drive.google.com/drive/folders/1FhJvhLs3iRWOu3A_hvG7i_HTn9nqWnIY?usp=sharing)
+
 Проект команды TEAM1 для Кейса №1 Qostanai AgroTech Hackathon 2026 (партнёр кейса — агрохолдинг «Олжа Агро», Костанайская область). Команда заняла первое место; этот репозиторий — доработка после хакатона по просьбе жюри: привести документацию и код в порядок и опубликовать честную версию проекта.
+
+## Результат хакатона
+
+**🥇 1 место — Qostanai AgroTech Hackathon 2026** (Astana Hub Kostanay · ТОО «Метод 2023» · ТОО «Олжа Агро» · Digital & AI Qazaqstan 2026), приз **500 000 ₸**. На хакатоне команда выступала под названием **MusorDropp**.
+
+📁 **Подтверждение (диплом победителя, сертификат на приз, сертификат участника, фото команды):** **[папка на Google Drive](https://drive.google.com/drive/folders/1FhJvhLs3iRWOu3A_hvG7i_HTn9nqWnIY?usp=sharing)**
+
+<table>
+  <tr>
+    <td align="center" width="50%"><a href="docs/assets/hackathon/certificate_winner.jpg"><img src="docs/assets/hackathon/certificate_winner.jpg" alt="Certificate of Achievement — Winner of AgroTech Hackathon 2026" width="100%"></a><br><sub><b>Certificate of Achievement</b> — WINNER of AgroTech Hackathon 2026</sub></td>
+    <td align="center" width="50%"><a href="docs/assets/hackathon/certificate_participation.jpg"><img src="docs/assets/hackathon/certificate_participation.jpg" alt="Certificate of Appreciation — участие в AgroTech Hackathon 2026" width="100%"></a><br><sub><b>Certificate of Appreciation</b> — участие в хакатоне</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/assets/hackathon/prize_500k.jpg"><img src="docs/assets/hackathon/prize_500k.jpg" alt="Сертификат на приз 500 000 ₸" width="100%"></a><br><sub><b>Приз победителю</b> — 500 000 ₸</sub></td>
+    <td align="center"><a href="docs/assets/hackathon/team.jpg"><img src="docs/assets/hackathon/team.jpg" alt="Команда MusorDropp" width="70%"></a><br><sub><b>Команда MusorDropp</b></sub></td>
+  </tr>
+</table>
 
 ## Что это и для кого
 
@@ -202,4 +221,6 @@ make demo                         # FastAPI (:8000) + Streamlit (:8501)
 
 ## Команда
 
-TEAM1, Qostanai AgroTech Hackathon 2026, Кейс №1 (партнёр — агрохолдинг «Олжа Агро»). Благодарим ментора кейса за агрономическую шпаргалку (пороги ЭПВ, фазы, дозы), которая легла в основу `case1/fleet/agronomy_rules.py`, и жюри — за то, что не дало выдать презентационные цифры за факт.
+**Алихан** — вся техническая часть (бэкенд FastAPI, офлайн-PWA «АгроСкаут», дашборд, экспорт GeoJSON / ISO-XML) и развитие идеи проекта.
+
+TEAM1 (MusorDropp), Qostanai AgroTech Hackathon 2026, Кейс №1 (партнёр — агрохолдинг «Олжа Агро»). Благодарим ментора кейса за агрономическую шпаргалку (пороги ЭПВ, фазы, дозы), которая легла в основу `case1/fleet/agronomy_rules.py`, и жюри — за то, что не дало выдать презентационные цифры за факт.
