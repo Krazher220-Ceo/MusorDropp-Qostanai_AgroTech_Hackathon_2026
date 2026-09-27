@@ -194,21 +194,38 @@ def generate_geojson(df_weeds):
 
 
 def generate_iso_xml(df_weeds, task_name="Task_WeedSpray_Kostanay_2026"):
+    """Собирает зоны обработки и возвращает ZIP-архив папки TASKDATA/
+    (TASKDATA.XML + GRD00001.bin) — именно в таком виде задание переносят
+    на терминал опрыскивателя."""
+    import io
+    import tempfile
+    import zipfile
+
     from case1.geo.zones import create_treatment_zones
-    from case1.geo.isoxml import create_isoxml_taskdata
+    from case1.geo.isoxml import export_isoxml
+
     detections = []
     if not df_weeds.empty:
         for _, row in df_weeds.iterrows():
-            if pd.notna(row.get("drone_lat")) and pd.notna(row.get("drone_lon")):
+            lat = row.get("weed_lat", row.get("drone_lat"))
+            lon = row.get("weed_lon", row.get("drone_lon"))
+            if pd.notna(lat) and pd.notna(lon):
                 detections.append({
-                    "lat": float(row["drone_lat"]),
-                    "lon": float(row["drone_lon"]),
+                    "lat": float(lat),
+                    "lon": float(lon),
                     "action": str(row.get("spray_action", "spray_weed")),
                     "species": str(row.get("species", "unknown"))
                 })
-    geojson_data = create_treatment_zones(detections)
-    xml_str, _ = create_isoxml_taskdata(geojson_data, task_name=task_name)
-    return xml_str
+    zones_geojson = create_treatment_zones(detections)
+
+    buffer = io.BytesIO()
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        export_isoxml(zones_geojson, tmp_dir)
+        taskdata_dir = Path(tmp_dir) / "TASKDATA"
+        with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+            for item in sorted(taskdata_dir.iterdir()):
+                archive.write(item, f"TASKDATA/{item.name}")
+    return buffer.getvalue()
 
 
 def load_all_detections_raw():
@@ -337,11 +354,12 @@ with st.sidebar:
         help="Минимальная уверенность YOLO для рамки-кандидата.",
     )
     review_thresh = st.slider(
-        "Минимальная уверенность вида", 0.20, 0.90, 0.60, 0.05,
+        "Минимальная уверенность вида", 0.20, 0.90, DEFAULT_SPECIES_CONFIDENCE, 0.05,
         help="Ниже этого значения вид отправляется на подтверждение агроному.",
     )
     st.caption(
-        "По умолчанию порог детектора — 30% (для высокого охвата очагов), а классификатора — 60%. "
+        "По умолчанию порог детектора — 30% (для высокого охвата очагов), а классификатора — "
+        f"{DEFAULT_SPECIES_CONFIDENCE:.0%} (единый порог из case1/configs/settings.yaml). "
         "Пшеница исключается автоматически, оставив только сорняки и сомнительные объекты."
     )
 
@@ -420,7 +438,7 @@ st.warning(
     "модель после накопления и разметки локальных полевых данных."
 )
 
-tab_exec, tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+tab_exec, tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "🏢 Сводный дашборд хозяйства & Синхронизация",
     "📤 Проверить снимок поля",
     "🗺️ Карта поля и детекции",
@@ -430,7 +448,8 @@ tab_exec, tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "📊 Метрики обучения модели",
     "🌌 Кластеры эмбеддингов (t-SNE) & Защита от галлюцинаций",
     "🛸 Планирование флота (1–5 БПЛА)",
-    "📚 Каталог датасетов (YOLOv8)"
+    "📚 Каталог датасетов (YOLOv8)",
+    "🌱 Многолетники по сезонам"
 ])
 
 
@@ -558,13 +577,13 @@ with tab_exec:
     with col_exp2:
         iso_xml_data = generate_iso_xml(df_raw)
         st.download_button(
-            label="📥 Скачать ISO-XML TaskController (.xml)",
+            label="📥 Скачать ISO-XML TaskController (.zip)",
             data=iso_xml_data,
-            file_name="TASKDATA.XML",
-            mime="application/xml",
+            file_name="TASKDATA.zip",
+            mime="application/zip",
             use_container_width=True
         )
-        st.caption("Международный стандарт ISO 11783 для терминалов умных штанг")
+        st.caption("ISO 11783-10: TASKDATA.XML + сетка GRD00001.bin (на терминале не проверялось)")
 
     with col_exp3:
         csv_export = df_raw.to_csv(index=False).encode('utf-8')
@@ -891,16 +910,19 @@ with tab2:
                 
                 gj = create_treatment_zones(det_list)
                 if gj["features"]:
-                    gdf = gpd.GeoDataFrame.from_features(gj)
-                    fig_map = px.choropleth_mapbox(
+                    gdf = gpd.GeoDataFrame.from_features(gj, crs="EPSG:4326")
+                    # plotly >= 6 убрал choropleth_mapbox в пользу choropleth_map (MapLibre).
+                    # Центроиды считаем в метрической проекции, иначе geopandas предупреждает.
+                    centroid = gdf.to_crs(gdf.estimate_utm_crs()).geometry.centroid.to_crs("EPSG:4326")
+                    fig_map = px.choropleth_map(
                         gdf,
                         geojson=gdf.geometry.__geo_interface__,
                         locations=gdf.index,
                         color="rate_l_ha",
                         color_continuous_scale="Viridis",
-                        mapbox_style="carto-positron",
+                        map_style="carto-positron",
                         zoom=18,
-                        center={"lat": gdf.geometry.centroid.y.mean(), "lon": gdf.geometry.centroid.x.mean()},
+                        center={"lat": float(centroid.y.mean()), "lon": float(centroid.x.mean())},
                         opacity=0.5,
                         title="Полигоны для опрыскивания (WGS84)"
                     )
@@ -1523,4 +1545,150 @@ with tab8:
             st.info("Нет доступных YOLOv8 датасетов для визуализации.")
     else:
         st.warning("Каталог датасетов (`case1/data/dataset_catalog.json`) ещё не сгенерирован. Запустите: `python3 case1_main.py download-datasets`")
+
+
+# ------------------------------------------------------------------------------
+# TAB 9: РЕЕСТР МНОГОЛЕТНИКОВ — СРАВНЕНИЕ ПОЛЯ ОТ СЕЗОНА К СЕЗОНУ
+# ------------------------------------------------------------------------------
+with tab9:
+    st.header("🌱 Реестр многолетних сорняков — сравнение поля от сезона к сезону")
+    st.markdown(
+        "Многолетние сорняки (Класс A: бодяк, вьюнок, осот и т.д.; Класс B: пырей — см. "
+        "шпаргалку агронома «Олжа Агро») сохраняются отдельно от разовых детекций в "
+        "`case1/output/perennial_registry.sqlite`, чтобы можно было сравнивать одно и то же "
+        "поле от облёта к облёту: где появились новые очаги, где они исчезли, как "
+        "изменилась плотность заселения (шт/м²) по видам."
+    )
+
+    try:
+        from case1.data.perennial_registry import PerennialRegistry, DEFAULT_DB_PATH
+        perennial_registry_error = None
+    except Exception as _perennial_err:  # pragma: no cover - защитный путь импорта
+        PerennialRegistry = None
+        DEFAULT_DB_PATH = None
+        perennial_registry_error = _perennial_err
+
+    if perennial_registry_error is not None:
+        st.warning(f"⚠️ Модуль реестра многолетников недоступен: {perennial_registry_error}")
+    elif not Path(DEFAULT_DB_PATH).exists():
+        st.info(
+            "Реестр многолетников ещё не заполнен. Запустите ингест реального отчёта командой:\n\n"
+            "`python3 -c \"from case1.data.perennial_registry import PerennialRegistry; "
+            "PerennialRegistry().ingest_field_report(field='kostanay_field_demo_01', season='2026-06')\"`"
+        )
+    else:
+        registry = PerennialRegistry(DEFAULT_DB_PATH)
+        fields = registry.list_fields()
+
+        if not fields:
+            st.info("В реестре пока нет ни одной записи о многолетниках.")
+        else:
+            col_field, col_season_a, col_season_b = st.columns(3)
+            with col_field:
+                selected_field = st.selectbox("Поле", fields, key="perennial_field_select")
+            seasons = registry.list_seasons(field=selected_field)
+
+            if len(seasons) == 0:
+                st.info(f"Для поля «{selected_field}» нет данных по сезонам.")
+            else:
+                with col_season_a:
+                    season_a = st.selectbox(
+                        "Сезон A (база сравнения)", seasons, index=0, key="perennial_season_a"
+                    )
+                with col_season_b:
+                    default_b_idx = len(seasons) - 1
+                    season_b = st.selectbox(
+                        "Сезон B (текущий облёт)", seasons, index=default_b_idx, key="perennial_season_b"
+                    )
+
+                rows = registry.list_perennials(field=selected_field, season=None)
+                df_perennials = pd.DataFrame(rows)
+
+                st.subheader("📋 Все зарегистрированные очаги многолетников")
+                if not df_perennials.empty:
+                    display_cols = [
+                        "season", "image_id", "species_ru", "density_per_m2",
+                        "occurrence_count", "field_area_m2", "source", "lat", "lon",
+                    ]
+                    display_cols = [c for c in display_cols if c in df_perennials.columns]
+                    st.dataframe(df_perennials[display_cols], use_container_width=True)
+
+                    if any(s == "demo_synthetic" for s in df_perennials.get("source", [])):
+                        st.caption(
+                            "⚠️ Строки с source=`demo_synthetic` — демонстрационные данные для показа "
+                            "сравнения сезонов, а не реальные результаты облёта."
+                        )
+                else:
+                    st.info("Нет записей для отображения.")
+
+                st.subheader("🗺️ Карта очагов многолетников")
+                df_map_points = df_perennials.dropna(subset=["lat", "lon"]) if not df_perennials.empty else df_perennials
+                if not df_map_points.empty:
+                    fig_perennial_map = (px.scatter_map if hasattr(px, "scatter_map") else px.scatter_mapbox)(
+                        df_map_points,
+                        lat="lat",
+                        lon="lon",
+                        color="species_ru",
+                        size="density_per_m2",
+                        hover_name="species_ru",
+                        hover_data=["season", "image_id", "occurrence_count", "density_per_m2", "source"],
+                        zoom=12,
+                        **({"map_style": "carto-positron"} if hasattr(px, "scatter_map") else {"mapbox_style": "carto-positron"}),
+                        title=f"Очаги многолетников — поле «{selected_field}»",
+                    )
+                    fig_perennial_map.update_layout(margin=dict(l=0, r=0, t=35, b=0), height=420)
+                    st.plotly_chart(fig_perennial_map, use_container_width=True)
+                else:
+                    st.info("Нет координат для отображения карты (частые причины: демо-запись без lat/lon).")
+
+                st.subheader(f"🔄 Сравнение сезонов: «{season_a}» → «{season_b}»")
+                if season_a == season_b:
+                    st.info("Выберите два разных сезона, чтобы увидеть изменения.")
+                else:
+                    comparison = registry.compare_seasons(selected_field, season_a, season_b)
+                    df_comparison = pd.DataFrame(comparison["species_comparison"])
+
+                    status_ru_map = {
+                        "new_focus": "🆕 Новый очаг",
+                        "disappeared": "✅ Очаг исчез",
+                        "increased": "📈 Плотность выросла",
+                        "decreased": "📉 Плотность снизилась",
+                        "stable": "➖ Без изменений",
+                    }
+                    if not df_comparison.empty:
+                        df_comparison["status_ru"] = df_comparison["status"].map(status_ru_map).fillna(df_comparison["status"])
+                        st.dataframe(
+                            df_comparison[[
+                                "species_ru", "density_season_a", "density_season_b",
+                                "delta_density", "delta_pct", "status_ru",
+                            ]].rename(columns={
+                                "species_ru": "Вид",
+                                "density_season_a": f"Плотность «{season_a}» (шт/м²)",
+                                "density_season_b": f"Плотность «{season_b}» (шт/м²)",
+                                "delta_density": "Δ плотности (шт/м²)",
+                                "delta_pct": "Δ %",
+                                "status_ru": "Статус",
+                            }),
+                            use_container_width=True,
+                        )
+
+                        col_new, col_gone = st.columns(2)
+                        with col_new:
+                            if comparison["new_foci"]:
+                                st.error(
+                                    "🆕 Новые очаги: " +
+                                    ", ".join(SPECIES_RU_MAP.get(sp, sp) for sp in comparison["new_foci"])
+                                )
+                            else:
+                                st.success("Новых очагов между выбранными сезонами не обнаружено.")
+                        with col_gone:
+                            if comparison["disappeared_foci"]:
+                                st.success(
+                                    "✅ Исчезнувшие очаги: " +
+                                    ", ".join(SPECIES_RU_MAP.get(sp, sp) for sp in comparison["disappeared_foci"])
+                                )
+                            else:
+                                st.info("Ранее зафиксированные очаги сохраняются в обоих сезонах.")
+                    else:
+                        st.info("Нет данных для сравнения между выбранными сезонами.")
 
